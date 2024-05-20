@@ -1,0 +1,5 @@
+SERVER_HOST = "127.0.0.1"
+SERVER_PORT = 65342
+
+MAX_DISPLAY_WIDTH = 80 # Not fully implemented
+
