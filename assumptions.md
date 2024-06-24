@@ -1,1 +1,0 @@
-each client only connects to one server at a time

@@ -1,33 +1,69 @@
-### Technical assessment assignment – Python Developer
+# Distributed File System Explorer
 
-# Task
-Build a software system composed of client and server python applications where the server and client roles are flipped: connected clients act as nodes in a distributed directory structure which the server can explore by issuing navigation commands. When interrogated, a client sends file structure information back to the server for display.
 
-The purpose of this exercise is to evaluate the design and execution of the task in the context of python - as such the challenge is to only use standard python modules.
+## Usage
 
-As part of this assessment, we expect you to be able to articulate decisions made in the process of building your system – please be prepared to discuss why you made design or implementation decisions in follow-on interviews.
+### Setup your Virtual Environment
+On  linux, run
+```bash
+$ python3 -m venv .venv
+```
+to create a virtual environment named `.venv` in the current directory.
 
-## Core Requirements
--	All code is to be written in python (3.8 or later)
--	The project code should be able to run in isolation from host system environment, so either in a containerised environment (e.g. Docker) or a virtual environment (e.g. virtualenv)
--	Within the containerised or virtual environment, only standard python modules can be used e.g. you may not `pip install` anything or import modules that do not come with the python installation.
--	Communication between client and server should be TCP. Clients can join or leave the server at any time and disconnection of either party should be gracefully handled. You’re free to design and implement a protocol to accommodate requirements of functionality and robustness.
--	Connecting clients provide at least the 'top level' directory they point at: they should then await server commands which allow exploration within that directory structure and report on the contents of local individual subdirectories. Clients should run until they are disconnected by the server or forcibly terminated.
-- The server should accept user commands to allow exploration of individual client nodes by communicating with them – There is no file transfer function, only the following information about files and directories needs to be displayed:
-  - Object name
-  - Modification Time
-  - If it is a directory, the number of items it contains.
-  - If it is not a directory, the sha256 hash of the file contents.
-- The server should display the file information delivered by clients, be able to handle multiple client connections, and run until a quit command is given by the user, or the server is forcibly terminated whereby it should exit gracefully.
- 
-## Stretch Goals
-If possible, implement the following ‘stretch goal’ features:
--	A test suite with coverage of important unit and system tests
--	The client and/or server can be configured via config files
+Then, activate the virtual environment by running
+```bash
+$ source .venv/bin/activate
+```
 
-## Deliverables
--	Source code for both client and server, configuration files, any tests and test data.
--	Instructions on how to bring up the containerised or virtual environment.
--	Usage instructions / notes
--	A short (maximum 1-page) document explaining your design, communication protocol, caveats, and assumptions.
+### Configuration
+A small number of server settings can be configured in src/config.py:
+- `HOST` - the host address the server will bind to.
+- `PORT` - the port the server will bind to.
 
+
+### Demo
+1. Launch the server by running `src/app_server.py` with Python 3.10
+2. Launch demo clients by running the following files with Python:
+    - `src/launch_test_client_1.py`
+    - `src/launch_test_client_2.py`
+    - `src/launch_test_client_3.py`
+
+3. The server console with display instructions on how to query the connected clients.
+
+
+### Normal usage
+1. Launch the server by running `src/app_server.py` with Python
+2. Launch the clients by running `python src/client_main.py <path_to_virtual_root>`
+
+## Design
+### The server:
+- uses TCP/IP sockets to communicate with clients.
+- The starts by creating a listening socket.
+- The server handles multiple connections by using multiplexing with the `select` module.
+- For each client connection, the server creates a MessageHandler object to:
+    - read variable length messages.
+    - control the registration of the associated socket with the server's selector.
+
+It was thought to be beneficial to allow the user to continue to input commands while the server waits on the client. This was achieved by using a non-blocking call to `select.select()` with a timeout of 1 second. After events from the selector have been handled, or the timeout has elapsed, the flow of the server returns to the user input dialog.
+
+In all tests, the clients responded very quickly, so it would have looked nicer if the input halted until the client responded. 
+
+### Clients:
+Clients provide information of the virtual root folder that they point to. This virtual root folder is path that is pass to the client script when it is launched.
+
+After a client connects, the client 
+1. creates a `MessageHandler` object which handles the reading of variable length messages. 
+2. then waits for a request from the server using a blocking call to `.recv()`.
+3. responds to the server by sending information on the contents of a folder.
+
+The server host and port can be configured in the `src/config.py` file.
+
+
+## Cavets
+
+- The server has not been tested with more than 5 simultaneous clients.
+- The client has not been designed to handle requests that match a file path. It handles directory paths only.
+
+
+## Assumptions
+each client only connects to one server at a time
